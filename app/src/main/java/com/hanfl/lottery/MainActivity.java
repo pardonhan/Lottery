@@ -5,20 +5,29 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 
 import com.chanven.lib.cptr.loadmore.OnLoadMoreListener;
 import com.chanven.lib.cptr.loadmore.SwipeRefreshHelper;
 import com.chanven.lib.cptr.recyclerview.RecyclerAdapterWithHF;
+import com.hanfl.lottery.api.JuheApi;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
 
 public class MainActivity extends AppCompatActivity {
 
 
+    private static final String TAG = MainActivity.class.getSimpleName();
     SwipeRefreshHelper swipeRefreshHelper;
     RecyclerAdapterWithHF recyclerAdapterWithHF;
 
@@ -83,6 +92,25 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void getLotteryInfo(int cPage){
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("http://gank.io/")
+                .build();
+        JuheApi api = retrofit.create(JuheApi.class);
+        Call<ResponseBody> call = api.getLotteryInfo();
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                try {
+                    String result = response.body().string();
+                    Log.i(TAG, "onResponse: "+result);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
 
+            }
+        });
     }
 }
