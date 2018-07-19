@@ -5,12 +5,18 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.telephony.gsm.GsmCellLocation;
 import android.util.Log;
 
 import com.chanven.lib.cptr.loadmore.OnLoadMoreListener;
 import com.chanven.lib.cptr.loadmore.SwipeRefreshHelper;
 import com.chanven.lib.cptr.recyclerview.RecyclerAdapterWithHF;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.hanfl.lottery.api.JuheApi;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setOrientation(LinearLayoutManager.VERTICAL);
         recyclerView.setLayoutManager(layoutManager);
-        lotteryAdapter = new LotteryAdapter(this,lotteryList);
+        lotteryAdapter = new LotteryAdapter(this, lotteryList);
         recyclerAdapterWithHF = new RecyclerAdapterWithHF(lotteryAdapter);
         recyclerView.setAdapter(recyclerAdapterWithHF);
 
@@ -70,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onfresh() {
                 isRefresh = true;
-                currentPage =1;
+                currentPage = 1;
                 getLotteryInfo(currentPage);
             }
         });
@@ -78,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void loadMore() {
                 isLoadMore = true;
-                currentPage ++;
+                currentPage++;
                 getLotteryInfo(currentPage);
             }
         });
@@ -91,22 +97,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void getLotteryInfo(int cPage){
+    private void getLotteryInfo(int cPage) {
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://gank.io/")
+                .baseUrl("http://apis.juhe.cn/")
                 .build();
         JuheApi api = retrofit.create(JuheApi.class);
-        Call<ResponseBody> call = api.getLotteryInfo();
+        Call<ResponseBody> call = api.getLotteryInfo("b41683df277e929cf4991816c0e7b35d", "ssq", cPage + "");
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 try {
                     String result = response.body().string();
-                    Log.i(TAG, "onResponse: "+result);
+                    try {
+                        JSONObject jsonObject = new JSONObject(result);
+                        String resJson = jsonObject.getJSONObject("result").getString("lotteryResList");
+                        Gson gson = new Gson();
+                        List<LotteryBean> list = gson.fromJson(resJson,new TypeToken<List<LotteryBean>>(){}.getType());
+                        if (!list.isEmpty()){
+                            lotteryList.addAll(list);
+                        }
+                        recyclerAdapterWithHF.notifyDataSetChangedHF();
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    Log.i(TAG, "onResponse: " + result);
+                    if (isRefresh) {
+                        swipeRefreshHelper.refreshComplete();
+                        swipeRefreshHelper.setLoadMoreEnable(true);
+                        isRefresh = false;
+                    }
+                    if (isLoadMore) {
+                        isLoadMore = false;
+                        swipeRefreshHelper.loadMoreComplete(true);
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
 
